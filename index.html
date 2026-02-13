@@ -154,24 +154,29 @@
 
         // Функция для перемещения кнопки "Нет" в случайное место экрана
         function moveNoButton() {
-            // Размеры кнопки (после рендера)
-            const btnWidth = noButton.offsetWidth;
-            const btnHeight = noButton.offsetHeight;
+    // Получаем актуальные размеры кнопки
+    const btnWidth = noButton.offsetWidth;
+    const btnHeight = noButton.offsetHeight;
 
-            // Границы, чтобы кнопка не уходила за край
-            const maxX = window.innerWidth - btnWidth;
-            const maxY = window.innerHeight - btnHeight;
+    // Вычисляем максимально допустимые координаты (левый верхний угол)
+    let maxX = window.innerWidth - btnWidth;
+    let maxY = window.innerHeight - btnHeight;
 
-            // Генерируем случайные координаты (с учётом безопасности, чтобы не было отрицательных)
-            const randomX = Math.max(0, Math.floor(Math.random() * maxX));
-            const randomY = Math.max(0, Math.floor(Math.random() * maxY));
+    // Если кнопка шире или выше окна — ставим её в угол (0,0)
+    if (maxX < 0) maxX = 0;
+    if (maxY < 0) maxY = 0;
 
-            // Делаем кнопку фиксированной и перемещаем
-            noButton.style.position = 'fixed';
-            noButton.style.left = randomX + 'px';
-            noButton.style.top = randomY + 'px';
-            noButton.style.zIndex = '10000'; // поверх всего
-        }
+    // Генерируем случайные координаты в пределах [0, maxX] и [0, maxY]
+    // Используем +1, чтобы включить maxX в диапазон (чтобы кнопка могла встать вплотную к правому краю)
+    const randomX = Math.floor(Math.random() * (maxX + 1));
+    const randomY = Math.floor(Math.random() * (maxY + 1));
+
+    // Применяем позицию
+    noButton.style.position = 'fixed';
+    noButton.style.left = randomX + 'px';
+    noButton.style.top = randomY + 'px';
+    noButton.style.zIndex = '10000';
+}
 
         // Отключаем стандартное поведение для кнопки "Нет" (чтобы случайно не отправить форму и т.п.)
         noButton.addEventListener('click', (e) => {
