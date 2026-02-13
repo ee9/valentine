@@ -83,7 +83,6 @@
             background: #ffb3c6;
             color: #9f2b4b;
             border: 3px solid white;
-            /* всегда в потоке */
             position: relative;
         }
 
@@ -91,10 +90,9 @@
             background: #ff9faf;
             color: #7a1f3a;
             border: 3px solid white;
-            /* изначально static — рядом с "да" */
             position: static;
             z-index: 9999;
-            touch-action: none; /* чтобы не прокручивалась страница при попытке тача */
+            touch-action: none;
         }
 
         #photo-container {
@@ -137,25 +135,99 @@
             user-select: none;
             -webkit-user-select: none;
         }
+
+        /* Стили модального окна */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 100000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal {
+            background: #fff0f5;
+            border-radius: 50px;
+            padding: 40px 30px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 30px rgba(0,0,0,0.3), 0 0 0 6px white, 0 0 0 12px #ffb6c1;
+            animation: modalPop 0.3s ease-out;
+        }
+
+        @keyframes modalPop {
+            0% { transform: scale(0.7); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .modal h2 {
+            font-size: 2.5rem;
+            color: #d43f6b;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 0 #ffe0f0;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .modal button {
+            font-size: 2rem;
+            padding: 15px 40px;
+            min-width: 150px;
+        }
+
+        .modal-yes {
+            background: #ffb3c6;
+            color: #9f2b4b;
+            border: 3px solid white;
+        }
+
+        .modal-no {
+            background: #ff9faf;
+            color: #7a1f3a;
+            border: 3px solid white;
+        }
     </style>
 </head>
 <body class="no-select">
     <div class="card">
         <h1>💖 Будешь моей валентинкой? 💖</h1>
 
-        <div class="buttons">
+        <div class="buttons" id="buttonsContainer">
             <button id="yes">ДА 💘</button>
             <button id="no">нет 😈</button>
         </div>
 
         <div id="photo-container">
-            <!-- ЗАМЕНИТЕ НАЗВАНИЕ ФАЙЛА -->
+            <!-- ЗАМЕНИТЕ НАЗВАНИЕ ФАЙЛА НА ВАШЕ ФОТО -->
             <img src="valentinka.jpg" alt="Наше фото" id="valentine-photo">
             <div class="heart">❤️ ❤️ ❤️</div>
         </div>
 
-        <div class="hint">
-            (подсказка: кнопку «нет» нельзя нажать 😉!)
+        <div class="hint" id="hint">
+            (подсказка: кнопку «нет» нельзя нажать – попробуй!)
+        </div>
+    </div>
+
+    <!-- Модальное окно -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <h2>Точно?</h2>
+            <div class="modal-buttons">
+                <button class="modal-yes" id="modalYes">Да 💖</button>
+                <button class="modal-no" id="modalNo">Нет 😅</button>
+            </div>
         </div>
     </div>
 
@@ -166,15 +238,19 @@
             const noButton = document.getElementById('no');
             const yesButton = document.getElementById('yes');
             const photoContainer = document.getElementById('photo-container');
+            const buttonsContainer = document.getElementById('buttonsContainer');
+            const hint = document.getElementById('hint');
+            const modalOverlay = document.getElementById('modalOverlay');
+            const modalYes = document.getElementById('modalYes');
+            const modalNo = document.getElementById('modalNo');
 
-            // Флаг: активирована ли уже кнопка "нет" (стала fixed)
+            // Флаг: активирована ли кнопка "нет" (стала fixed)
             let isNoButtonActive = false;
 
             // Функция безопасного перемещения (работает только если кнопка уже fixed или мы её активируем)
             function moveNoButtonSafely() {
                 if (!noButton) return;
 
-                // Получаем размеры кнопки
                 const btnWidth = noButton.offsetWidth;
                 const btnHeight = noButton.offsetHeight;
 
@@ -190,7 +266,6 @@
                 const randomX = Math.floor(Math.random() * (maxX + 1));
                 const randomY = Math.floor(Math.random() * (maxY + 1));
 
-                // Устанавливаем позицию
                 noButton.style.position = 'fixed';
                 noButton.style.left = randomX + 'px';
                 noButton.style.top = randomY + 'px';
@@ -204,13 +279,12 @@
                     isNoButtonActive = true;
                     moveNoButtonSafely();
                 } else {
-                    // Если уже активна, просто перемещаем
                     moveNoButtonSafely();
                 }
             }
 
             // Обработчики событий для кнопки "Нет"
-            const events = ['mouseover', 'mousedown', 'touchstart', 'touchmove', 'click', 'contextmenu'];
+            const events = ['mouseover', 'mousedown', 'touchstart', 'touchmove', 'click', 'contextmenu', 'mouseenter'];
             events.forEach(eventType => {
                 noButton.addEventListener(eventType, (e) => {
                     e.preventDefault();
@@ -219,24 +293,52 @@
                 }, { passive: false, capture: true });
             });
 
-            // Дополнительно: при входе курсора (mouseenter) тоже активируем
-            noButton.addEventListener('mouseenter', (e) => {
-                e.preventDefault();
-                activateNoButton();
-            }, { passive: false });
-
-            // Обработка кнопки "Да"
+            // Обработка кнопки "Да" (открытие модалки)
             yesButton.addEventListener('click', (e) => {
                 e.preventDefault();
+                modalOverlay.style.display = 'flex'; // показываем модалку
+            });
+
+            // Обработка "Да" в модалке
+            modalYes.addEventListener('click', (e) => {
+                e.preventDefault();
+                modalOverlay.style.display = 'none'; // скрываем модалку
+
+                // Показываем фото
                 photoContainer.style.display = 'block';
+
+                // Меняем заголовок
                 document.querySelector('h1').innerHTML = '💞 Я так и знал(а)! Спасибо! 💞';
 
+                // Скрываем кнопки и подсказку
+                buttonsContainer.style.display = 'none';
+                hint.style.display = 'none';
+
+                // Прокручиваем к фото
                 setTimeout(() => {
                     photoContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }, 150);
+            });
 
-                // Делаем кнопку "нет" полупрозрачной (опционально)
-                noButton.style.opacity = '0.7';
+            // Обработка "Нет" в модалке (просто закрыть)
+            modalNo.addEventListener('click', (e) => {
+                e.preventDefault();
+                modalOverlay.style.display = 'none';
+            });
+
+            // Закрытие модалки при клике на оверлей (фон)
+            modalOverlay.addEventListener('click', (e) => {
+                // Если клик именно на оверлей, а не на внутреннее окно
+                if (e.target === modalOverlay) {
+                    modalOverlay.style.display = 'none';
+                }
+            });
+
+            // Закрытие по клавише Escape
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && modalOverlay.style.display === 'flex') {
+                    modalOverlay.style.display = 'none';
+                }
             });
 
             // При изменении размера окна, если кнопка активна, корректируем позицию
@@ -246,15 +348,13 @@
                 }
             });
 
-            // При прокрутке тоже корректируем (для мобильных)
             window.addEventListener('scroll', () => {
                 if (isNoButtonActive) {
                     moveNoButtonSafely();
                 }
             }, { passive: true });
 
-            // Никакой инициализации, которая двигает кнопку с места!
-            // Кнопка остаётся static до первого взаимодействия.
+            // Кнопка "нет" изначально статична (рядом с "да")
         })();
     </script>
 </body>
