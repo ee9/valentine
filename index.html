@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Будешь моей валентинкой? 💘</title>
     <style>
         * {
@@ -20,6 +20,7 @@
             justify-content: center;
             margin: 0;
             padding: 16px;
+            overflow-x: hidden;
         }
 
         .card {
@@ -34,6 +35,8 @@
             width: 100%;
             text-align: center;
             transition: 0.3s;
+            position: relative;
+            z-index: 1;
         }
 
         h1 {
@@ -43,6 +46,7 @@
             margin-bottom: 30px;
             letter-spacing: 2px;
             line-height: 1.2;
+            word-break: break-word;
         }
 
         .buttons {
@@ -52,6 +56,7 @@
             flex-wrap: wrap;
             margin: 40px 0 30px;
             position: relative;
+            min-height: 150px;
         }
 
         button {
@@ -66,6 +71,8 @@
             font-family: inherit;
             min-width: 200px;
             transform: translateY(0);
+            -webkit-tap-highlight-color: transparent;
+            touch-action: none; /* предотвращает стандартное поведение касания */
         }
 
         button:active {
@@ -77,20 +84,28 @@
             background: #ffb3c6;
             color: #9f2b4b;
             border: 3px solid white;
+            /* Фиксируем позицию - всегда остаётся в потоке */
+            position: relative;
+            pointer-events: auto;
         }
 
         #no {
             background: #ff9faf;
             color: #7a1f3a;
             border: 3px solid white;
-            position: static;
+            position: fixed; /* теперь точно fixed */
             z-index: 9999;
+            will-change: left, top; /* оптимизация для анимации */
+            touch-action: none;
+            pointer-events: auto;
         }
 
         #photo-container {
             display: none;
             margin-top: 40px;
             animation: popIn 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            position: relative;
+            z-index: 2;
         }
 
         #photo-container img {
@@ -120,9 +135,15 @@
             text-shadow: 2px 2px 0 #ffe0f0;
             opacity: 0.8;
         }
+
+        /* Защита от случайного выделения текста при быстрых движениях */
+        .no-select {
+            user-select: none;
+            -webkit-user-select: none;
+        }
     </style>
 </head>
-<body>
+<body class="no-select">
     <div class="card">
         <h1>💖 Будешь моей валентинкой? 💖</h1>
 
@@ -132,7 +153,7 @@
         </div>
 
         <div id="photo-container">
-            <!-- Замените src на имя вашего файла с фото (например, my_photo.jpg) -->
+            <!-- ЗАМЕНИТЕ НАЗВАНИЕ ФАЙЛА НА ВАШЕ ФОТО -->
             <img src="valentinka.jpg" alt="Наше фото" id="valentine-photo">
             <div class="heart">❤️ ❤️ ❤️</div>
         </div>
@@ -143,71 +164,142 @@
     </div>
 
     <script>
-        const noButton = document.getElementById('no');
-        const yesButton = document.getElementById('yes');
-        const photoContainer = document.getElementById('photo-container');
+        (function() {
+            'use strict';
 
-        // Исправленная функция перемещения – кнопка никогда не уходит за край
-        function moveNoButton() {
-            const btnWidth = noButton.offsetWidth;
-            const btnHeight = noButton.offsetHeight;
+            const noButton = document.getElementById('no');
+            const yesButton = document.getElementById('yes');
+            const photoContainer = document.getElementById('photo-container');
+            
+            // Функция для безопасного перемещения кнопки "Нет"
+            function moveNoButtonSafely() {
+                if (!noButton) return;
 
-            let maxX = window.innerWidth - btnWidth;
-            let maxY = window.innerHeight - btnHeight;
+                // Получаем актуальные размеры
+                const btnWidth = noButton.offsetWidth;
+                const btnHeight = noButton.offsetHeight;
+                
+                // Получаем размеры окна с учётом возможного скролла
+                const winWidth = window.innerWidth;
+                const winHeight = window.innerHeight;
 
-            // Если кнопка больше окна – ставим в угол (0,0)
-            if (maxX < 0) maxX = 0;
-            if (maxY < 0) maxY = 0;
+                // Вычисляем максимально допустимые координаты (левый верхний угол)
+                let maxX = winWidth - btnWidth;
+                let maxY = winHeight - btnHeight;
 
-            // Генерируем случайные целые координаты от 0 до maxX включительно
-            const randomX = Math.floor(Math.random() * (maxX + 1));
-            const randomY = Math.floor(Math.random() * (maxY + 1));
+                // Если кнопка больше окна — ограничиваем нулём (оставляем видимой часть)
+                if (maxX < 0) maxX = 0;
+                if (maxY < 0) maxY = 0;
 
-            noButton.style.position = 'fixed';
-            noButton.style.left = randomX + 'px';
-            noButton.style.top = randomY + 'px';
-            noButton.style.zIndex = '10000';
-        }
+                // Генерируем случайные целые координаты строго в пределах [0, maxX] и [0, maxY]
+                // Используем +1 чтобы включить maxX в диапазон
+                const randomX = Math.min(maxX, Math.floor(Math.random() * (maxX + 1)));
+                const randomY = Math.min(maxY, Math.floor(Math.random() * (maxY + 1)));
 
-        // Отключаем стандартное поведение для кнопки "Нет"
-        noButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            moveNoButton();
-        });
+                // Применяем позицию
+                noButton.style.position = 'fixed';
+                noButton.style.left = randomX + 'px';
+                noButton.style.top = randomY + 'px';
+                noButton.style.bottom = 'auto';
+                noButton.style.right = 'auto';
+            }
 
-        noButton.addEventListener('mouseover', (e) => {
-            e.preventDefault();
-            moveNoButton();
-        });
+            // Инициализация начальной позиции (чтобы кнопка не наезжала на "Да")
+            function initNoButtonPosition() {
+                // Сначала временно убираем fixed, чтобы получить размеры
+                noButton.style.position = 'static';
+                // Даём браузеру обновиться
+                setTimeout(() => {
+                    moveNoButtonSafely();
+                }, 10);
+            }
 
-        noButton.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            moveNoButton();
-        });
+            // Обработчики событий для кнопки "Нет"
+            function setupNoButton() {
+                // Предотвращаем все стандартные действия на кнопке
+                const events = ['click', 'mouseover', 'mousedown', 'mouseenter', 'touchstart', 'touchmove', 'touchend'];
+                
+                events.forEach(eventType => {
+                    noButton.addEventListener(eventType, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        moveNoButtonSafely();
+                    }, { passive: false, capture: true }); // capture true для перехвата на ранней стадии
+                });
 
-        noButton.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            moveNoButton();
-        });
+                // Дополнительная защита от контекстного меню
+                noButton.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    moveNoButtonSafely();
+                });
+            }
 
-        // Для мобильных: при движении пальца тоже убегает
-        noButton.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            moveNoButton();
-        }, { passive: false });
+            // Обработка кнопки "Да"
+            function setupYesButton() {
+                yesButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    
+                    // Показываем фото
+                    photoContainer.style.display = 'block';
+                    
+                    // Меняем заголовок
+                    document.querySelector('h1').innerHTML = '💞 Я так и знал(а)! Спасибо! 💞';
+                    
+                    // Прокручиваем к фото
+                    setTimeout(() => {
+                        photoContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 150);
+                    
+                    // Можно добавить сюрприз - кнопка "нет" становится менее активной, но всё ещё убегает
+                    noButton.style.opacity = '0.7';
+                });
 
-        // Обработка кнопки "ДА"
-        yesButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            photoContainer.style.display = 'block';
-            document.querySelector('h1').innerHTML = '💞 Я так и знал(а)! Спасибо! 💞';
+                // Защищаем кнопку "Да" от случайного перемещения
+                yesButton.style.position = 'relative';
+                yesButton.style.left = 'auto';
+                yesButton.style.top = 'auto';
+            }
 
-            setTimeout(() => {
-                photoContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 100);
-        });
+            // Сброс позиции при изменении размера окна
+            window.addEventListener('resize', () => {
+                moveNoButtonSafely();
+            });
+
+            // Также при прокрутке (на мобильных) пересчитываем позицию
+            window.addEventListener('scroll', () => {
+                moveNoButtonSafely();
+            }, { passive: true });
+
+            // Запуск после полной загрузки DOM
+            document.addEventListener('DOMContentLoaded', () => {
+                initNoButtonPosition();
+                setupNoButton();
+                setupYesButton();
+            });
+
+            // На всякий случай запускаем сразу, если DOM уже загружен
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => {
+                    initNoButtonPosition();
+                });
+            } else {
+                initNoButtonPosition();
+            }
+
+            // Периодическая проверка (на случай, если что-то пошло не так)
+            setInterval(() => {
+                // Проверяем, не ушла ли кнопка за пределы
+                const rect = noButton.getBoundingClientRect();
+                const winWidth = window.innerWidth;
+                const winHeight = window.innerHeight;
+
+                if (rect.right > winWidth || rect.left < 0 || rect.bottom > winHeight || rect.top < 0) {
+                    // Если кнопка частично за границей - перемещаем
+                    moveNoButtonSafely();
+                }
+            }, 500); // проверка каждые 500 мс
+
+        })();
     </script>
 </body>
 </html>
